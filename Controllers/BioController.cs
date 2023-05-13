@@ -31,7 +31,10 @@ namespace MissingPersonApp.Controllers
                 foreach (var bio in bios)
                 {
                     var relatives = await connection.QueryAsync<Relative>("SELECT * FROM relative WHERE bioid = @bioid", new { bioid = bio.id });
+                    var chronology = await connection.QueryAsync<Kronologi>("SELECT * FROM kronologi WHERE bioid = @bioid", new { bioid = bio.id });
+
                     bio.relatives = relatives.ToList();
+                    bio.chronology = chronology.ToList();
                 }
 
                 return bios.ToList();
@@ -39,6 +42,30 @@ namespace MissingPersonApp.Controllers
         }
 
 
+            [HttpDelete("{id}")]
+            public async Task<IActionResult> DeleteBioByIdAsync(int id){
+                using (var connection = new NpgsqlConnection(_connectionString)) {
+                await connection.OpenAsync();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        await connection.ExecuteAsync("DELETE FROM relative WHERE bioid = @bioid", new { bioid = id }, transaction);
+                        await connection.ExecuteAsync("DELETE FROM kronologi WHERE bioid = @bioid", new { bioid = id }, transaction);
+                        await connection.ExecuteAsync("DELETE FROM bios WHERE Id = @Id", new { Id = id }, transaction);
+
+                        transaction.Commit();
+                    }
+                    catch (NpgsqlException)
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+
+            return NoContent();
+            }
 
         // [HttpGet("{id}")]
         // public async Task<ActionResult<Bio>> GetBioById(int id)
@@ -64,17 +91,30 @@ namespace MissingPersonApp.Controllers
                 {
                     try
                     {
-                        var dateOfBirth = DateTime.ParseExact(bio.dateofbirth,"yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        DateTime dateOfBirth = DateTime.ParseExact(bio.dateofbirth,"yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        DateTime lastSeenTimes = DateTime.ParseExact(bio.lastSeenTime,"yyyy/MM/dd hh:mm tt", CultureInfo.InvariantCulture);
 
-                        var result = await connection.QueryFirstOrDefaultAsync<int>("INSERT INTO bios (name, dateofbirth, address) VALUES (@name, @dateofbirth, @address) RETURNING Id", new { name = bio.name, dateofbirth = dateOfBirth, address = bio.address }, transaction);
+
+
+                        var result = await connection.QueryFirstOrDefaultAsync<int>("INSERT INTO bios (name, dateofbirth, address, lastSeenTime, lastSeenPlace, additionalNote) VALUES (@name, @dateofbirth, @address, @lastSeenTime, @lastSeenPlace, @additionalNote) RETURNING Id", 
+                        new { name = bio.name, dateofbirth = dateOfBirth, address = bio.address, lastSeenTime = lastSeenTimes, lastSeenPlace = bio.lastSeenPlace, additionalNote = bio.additionalNote}, transaction);
                         bio.id = result;
                         Console.WriteLine(bio.id);
 
-                        if (bio.relatives != null && bio.relatives.Count > 0)
+                        if (bio.relatives != null && bio.relatives.Count > 0 && bio.chronology != null && bio.chronology.Count > 0)
                         {
                             foreach (var relative in bio.relatives)
                             {
-                                await connection.ExecuteAsync("INSERT INTO relative (name, bioid, relationToVictim, phoneNumber) VALUES (@name, @bioid, @relationToVictim, @phoneNumber)", new { name = relative.name, bioid = bio.id, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber}, transaction);
+                                await connection.ExecuteAsync("INSERT INTO relative (name, bioid, relationToVictim, phoneNumber) VALUES (@name, @bioid, @relationToVictim, @phoneNumber)", 
+                                new { name = relative.name, bioid = bio.id, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber}, transaction);
+                            }
+                            foreach (var chronology in bio.chronology)
+                            {
+                                DateTime chroTime = DateTime.ParseExact(chronology.dateAndTime,"yyyy/MM/dd hh:mm tt", CultureInfo.InvariantCulture);
+
+
+                                await connection.ExecuteAsync("INSERT INTO kronologi (activityName, bioid, dateAndTime, additionalNote) VALUES (@activityName, @bioid, @dateAndTime, @additionalNote)",
+                                 new{activityName = chronology.activityName, bioid = bio.id, dateAndTime = chroTime, additionalNote = chronology.additionalNote});
                             }
                         }
 
