@@ -2,10 +2,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using MissingPersonApp.Data;
+using Npgsql;
+using Dapper;
 using MissingPersonApp.Models;
+using System;
 using System.Globalization;
+
 
 namespace MissingPersonApp.Controllers
 {
@@ -13,43 +15,80 @@ namespace MissingPersonApp.Controllers
     [Route("api/[controller]")]
     public class BioController : ControllerBase
     {
-        private readonly MyDbContext _context;
+        private readonly string _connectionString;
 
-        public BioController (MyDbContext context){
-            _context = context;
+        public BioController (IConfiguration configuration){
+            _connectionString = configuration.GetConnectionString("MyDatabase");
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Bio>>> GetBios()
+        public async Task<ActionResult<IEnumerable<Bio>>> GetBioAsync()
         {
-            return await _context.bios.ToListAsync();
-        }
-
-
-
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Bio>> GetBioById(int id)
-        {
-            var bio = await _context.bios.FindAsync(id);
-
-            if (bio == null)
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
-                return NotFound();
-            }
+                var bios = await connection.QueryAsync<Bio>("SELECT * FROM bios");
 
-            return bio;
+                foreach (var bio in bios)
+                {
+                    var relatives = await connection.QueryAsync<Relative>("SELECT * FROM relative WHERE bioid = @bioid", new { bioid = bio.id });
+                    bio.relatives = relatives.ToList();
+                }
+
+                return bios.ToList();
+            }
         }
+
+
+
+        // [HttpGet("{id}")]
+        // public async Task<ActionResult<Bio>> GetBioById(int id)
+        // {
+        //     var bio = await _context.bios.FindAsync(id);
+
+        //     if (bio == null)
+        //     {
+        //         return NotFound();
+        //     }
+
+        //     return bio;
+        // }
 
 
         [HttpPost]
-        public async Task<ActionResult<Bio>> CreateTodo(Bio bio)
+        public async Task<ActionResult<Bio>> PostBioAsync(Bio bio)
         {
-            // DateTime date = DateTime.ParseExact(bio.dateofbirth, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            using (var connection = new NpgsqlConnection(_connectionString))
+            { 
+                await connection.OpenAsync();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        var dateOfBirth = DateTime.ParseExact(bio.dateofbirth,"yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-            _context.bios.Add(bio);
-            await _context.SaveChangesAsync();
+                        var result = await connection.QueryFirstOrDefaultAsync<int>("INSERT INTO bios (name, dateofbirth, address) VALUES (@name, @dateofbirth, @address) RETURNING Id", new { name = bio.name, dateofbirth = dateOfBirth, address = bio.address }, transaction);
+                        bio.id = result;
+                        Console.WriteLine(bio.id);
 
-            return CreatedAtAction(nameof(GetBioById), new { id = bio.id }, bio);
+                        if (bio.relatives != null && bio.relatives.Count > 0)
+                        {
+                            foreach (var relative in bio.relatives)
+                            {
+                                await connection.ExecuteAsync("INSERT INTO relative (name, bioid, relationToVictim, phoneNumber) VALUES (@name, @bioid, @relationToVictim, @phoneNumber)", new { name = relative.name, bioid = bio.id, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber}, transaction);
+                            }
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch (NpgsqlException)
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+
+                return CreatedAtAction(nameof(PostBioAsync), new { id = bio.id }, bio);
+            }
         }
 
 

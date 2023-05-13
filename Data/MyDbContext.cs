@@ -12,5 +12,15 @@ namespace MissingPersonApp.Data
         }
 
         public DbSet<Bio> bios { get; set; }
+        public DbSet<Relative> relatives {get; set;}
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Bio>()
+            .HasMany(p => p.relatives)
+            .WithOne(c => c.bio)
+            .HasForeignKey(c => c.id)
+            .OnDelete(DeleteBehavior.Cascade);
+        }
     }
 }

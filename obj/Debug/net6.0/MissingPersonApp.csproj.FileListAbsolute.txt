@@ -58,3 +58,4 @@
 /home/user/MissingPersonApp/MissingPersonApp/obj/Debug/net6.0/ref/MissingPersonApp.dll
 /home/user/MissingPersonApp/MissingPersonApp/obj/Debug/net6.0/MissingPersonApp.pdb
 /home/user/MissingPersonApp/MissingPersonApp/obj/Debug/net6.0/MissingPersonApp.genruntimeconfig.cache
+/home/user/MissingPersonApp/MissingPersonApp/bin/Debug/net6.0/Dapper.dll
