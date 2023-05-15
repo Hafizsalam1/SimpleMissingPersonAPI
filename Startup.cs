@@ -11,6 +11,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using Microsoft.OpenApi.Models;
 using MissingPersonApp.Data;
 using System.Data;
+using Microsoft.AspNetCore.Diagnostics;
 
 namespace MissingPersonApp
 {
@@ -41,6 +42,8 @@ namespace MissingPersonApp
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // app.UseDeveloperExceptionPage();
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -57,6 +60,12 @@ namespace MissingPersonApp
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapControllerRoute(
+                name: "GetBio",
+                pattern: "api/bio/{id}",
+                defaults: new { controller = "Bio", action = "PostBioAsync" });
+                
+                
             });
 
             app.UseSwagger();

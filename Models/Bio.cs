@@ -12,6 +12,7 @@ public class Bio
     public string lastSeenPlace {get; set;}
     public string address {get;set;}
     public string? additionalNote {get;set;}
+    
     public ICollection<Kronologi>? chronology {get; set;}
     public ICollection<Relative>? relatives { get; set; }
 

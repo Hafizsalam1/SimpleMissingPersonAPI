@@ -67,18 +67,36 @@ namespace MissingPersonApp.Controllers
             return NoContent();
             }
 
-        // [HttpGet("{id}")]
-        // public async Task<ActionResult<Bio>> GetBioById(int id)
-        // {
-        //     var bio = await _context.bios.FindAsync(id);
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Bio>> GetBioById(int id){
+            using (var connection = new NpgsqlConnection(_connectionString)){
+                await connection.OpenAsync();
+                using (var transaction = connection.BeginTransaction()){
+                    try{
+                        Bio bio = await connection.QueryFirstOrDefaultAsync<Bio>("SELECT * FROM bios WHERE id = @Id", new { id = id }, transaction);
+                        var relatives = await connection.QueryAsync<Relative>("SELECT * FROM relative WHERE bioid = @bioid", new { bioid = id }, transaction);
+                        var chronology = await connection.QueryAsync<Kronologi>("SELECT * FROM kronologi WHERE bioid = @bioid", new { bioid = id }, transaction);
+                        bio.relatives = (ICollection<Relative>?)relatives;
+                        bio.chronology = (ICollection<Kronologi>?)chronology;
+                        transaction.Commit();
+                        return bio;
 
-        //     if (bio == null)
-        //     {
-        //         return NotFound();
-        //     }
+                    }
+                    catch(NpgsqlException){
+                        transaction.Rollback();
 
-        //     return bio;
-        // }
+
+                    }
+                    
+                }
+                return NoContent();
+
+
+
+            }
+            
+
+        }
 
 
         [HttpPost]
@@ -99,7 +117,6 @@ namespace MissingPersonApp.Controllers
                         var result = await connection.QueryFirstOrDefaultAsync<int>("INSERT INTO bios (name, dateofbirth, address, lastSeenTime, lastSeenPlace, additionalNote) VALUES (@name, @dateofbirth, @address, @lastSeenTime, @lastSeenPlace, @additionalNote) RETURNING Id", 
                         new { name = bio.name, dateofbirth = dateOfBirth, address = bio.address, lastSeenTime = lastSeenTimes, lastSeenPlace = bio.lastSeenPlace, additionalNote = bio.additionalNote}, transaction);
                         bio.id = result;
-                        Console.WriteLine(bio.id);
 
                         if (bio.relatives != null && bio.relatives.Count > 0 && bio.chronology != null && bio.chronology.Count > 0)
                         {
@@ -127,7 +144,7 @@ namespace MissingPersonApp.Controllers
                     }
                 }
 
-                return CreatedAtAction(nameof(PostBioAsync), new { id = bio.id }, bio);
+                return CreatedAtAction(nameof(PostBioAsync), "Bio",new { id = bio.id }, bio);
             }
         }
 
