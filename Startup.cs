@@ -76,6 +76,12 @@ namespace MissingPersonApp
                 name: "PostKron",
                 pattern: "api/kron/{id}",
                 defaults: new { controller = "Kron", action = "PostKronAsync" });
+
+                endpoints.MapControllers();
+                endpoints.MapControllerRoute(
+                name: "PutBio",
+                pattern: "api/bio/{id}",
+                defaults: new { controller = "Kron", action = "PutBioAsync" });
                 
                 
             }

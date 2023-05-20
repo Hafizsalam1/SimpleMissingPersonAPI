@@ -162,20 +162,22 @@ namespace MissingPersonApp.Controllers
                         DateTime dateOfBirth = DateTime.ParseExact(bio.dateofbirth,"yyyy-MM-dd", CultureInfo.InvariantCulture);
                         DateTime lastSeenTimes = DateTime.ParseExact(bio.lastSeenTime,"yyyy/MM/dd hh:mm tt", CultureInfo.InvariantCulture);
                             
-                        var result = await connection.QueryFirstOrDefaultAsync<int>("UPDATE bios SET name = :name, dateofbirth = :dateofbirth, address = :address, lastSeenTime = :lastSeenTime, lastSeenPlace = :lastSeenPlace, additionalNote = :additionalNote WHERE id = :Id", 
-                        new { name = bio.name, dateofbirth = dateOfBirth, address = bio.address, lastSeenTime = lastSeenTimes, lastSeenPlace = bio.lastSeenPlace, additionalNote = bio.additionalNote}, transaction);
+                        var result = await connection.QueryFirstOrDefaultAsync<int>("UPDATE bios SET name = $1, dateofbirth = $2, address = $3, lastSeenTime = $4, lastSeenPlace = $5, additionalNote = $6 WHERE id = $7", 
+                        new { name = bio.name, dateOfBirth, bio.address, lastSeenTimes, bio.lastSeenPlace, bio.additionalNote, id}, transaction);
 
                         if (bio.relatives != null && bio.relatives.Count > 0 && bio.chronology != null && bio.chronology.Count > 0){
-                            foreach (var relative in bio.relatives)
+                            foreach (Relative relative in bio.relatives)
                             {
-                                await connection.ExecuteAsync("UPDATE relative SET name = :name, bioid = :bioid, relationToVictim = :relationToVictim, phoneNumber = :phoneNumber WHERE id = :Id", 
-                                new { name = relative.name, bioid = bio.id, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber}, transaction);
+                                var relId = relative.id;
+                                await connection.ExecuteAsync("UPDATE relative SET name = $1, bioid = $2, relationToVictim = $3, phoneNumber = $4 WHERE id = $5", 
+                                new { relative.name, bio.id, relative.relationToVictim, relative.phoneNumber, relId}, transaction);
                                 
                             }
                             foreach (var chronology in bio.chronology){
+                                var kronId = chronology.id;
                                 DateTime chroTime = DateTime.ParseExact(chronology.dateAndTime,"yyyy/MM/dd hh:mm tt", CultureInfo.InvariantCulture);
-                                await connection.ExecuteAsync("UPDATE kronologi SET activityName = :activityName, bioid = :bioid, dateAndTime = :dateAndTime, additionalNote = :additionalNote WHERE id = :Id",
-                                new{activityName = chronology.activityName, bioid = bio.id, dateAndTime = chroTime, additionalNote = chronology.additionalNote});
+                                await connection.ExecuteAsync("UPDATE kronologi SET activityName = $1, bioid = $2, dateAndTime = $3, additionalNote = $4 WHERE id = $5",
+                                new{chronology.activityName,  bio.id, chroTime, chronology.additionalNote, kronId});
                             }
 
 
