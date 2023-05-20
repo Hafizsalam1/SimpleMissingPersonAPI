@@ -149,6 +149,60 @@ namespace MissingPersonApp.Controllers
         }
 
 
+        [HttpPut("{id}")]
+        public async Task<ActionResult<Bio>> PutBioAsync(Bio bio, int id){
+            using (var connection = new NpgsqlConnection(_connectionString)){
+                await connection.OpenAsync();
+                using (var transaction = connection.BeginTransaction()){
+                    try{
+                        if (GetBioById(id)==null){
+                            throw new Exception("There is no missiong person with that ID");
+                        }
+                        else{
+                        DateTime dateOfBirth = DateTime.ParseExact(bio.dateofbirth,"yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        DateTime lastSeenTimes = DateTime.ParseExact(bio.lastSeenTime,"yyyy/MM/dd hh:mm tt", CultureInfo.InvariantCulture);
+                            
+                        var result = await connection.QueryFirstOrDefaultAsync<int>("UPDATE bios SET name = :name, dateofbirth = :dateofbirth, address = :address, lastSeenTime = :lastSeenTime, lastSeenPlace = :lastSeenPlace, additionalNote = :additionalNote WHERE id = :Id", 
+                        new { name = bio.name, dateofbirth = dateOfBirth, address = bio.address, lastSeenTime = lastSeenTimes, lastSeenPlace = bio.lastSeenPlace, additionalNote = bio.additionalNote}, transaction);
+
+                        if (bio.relatives != null && bio.relatives.Count > 0 && bio.chronology != null && bio.chronology.Count > 0){
+                            foreach (var relative in bio.relatives)
+                            {
+                                await connection.ExecuteAsync("UPDATE relative SET name = :name, bioid = :bioid, relationToVictim = :relationToVictim, phoneNumber = :phoneNumber WHERE id = :Id", 
+                                new { name = relative.name, bioid = bio.id, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber}, transaction);
+                                
+                            }
+                            foreach (var chronology in bio.chronology){
+                                DateTime chroTime = DateTime.ParseExact(chronology.dateAndTime,"yyyy/MM/dd hh:mm tt", CultureInfo.InvariantCulture);
+                                await connection.ExecuteAsync("UPDATE kronologi SET activityName = :activityName, bioid = :bioid, dateAndTime = :dateAndTime, additionalNote = :additionalNote WHERE id = :Id",
+                                new{activityName = chronology.activityName, bioid = bio.id, dateAndTime = chroTime, additionalNote = chronology.additionalNote});
+                            }
+
+
+                        }
+                        transaction.Commit();
+
+
+                        }
+
+
+
+                    }catch(NpgsqlException){
+                        transaction.Rollback();
+                        throw;
+                        
+                    }
+                }
+
+                return CreatedAtAction(nameof(PutBioAsync), "Bio",new { id = bio.id }, bio);
+
+            }
+
+        }
+
+
+
+
 
 
 

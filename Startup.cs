@@ -65,8 +65,24 @@ namespace MissingPersonApp
                 pattern: "api/bio/{id}",
                 defaults: new { controller = "Bio", action = "PostBioAsync" });
                 
+                endpoints.MapControllers();
+                endpoints.MapControllerRoute(
+                name: "PostRelative",
+                pattern: "api/relative/{id}",
+                defaults: new { controller = "Relative", action = "PostRelativeAsync" });
+
+                endpoints.MapControllers();
+                endpoints.MapControllerRoute(
+                name: "PostKron",
+                pattern: "api/kron/{id}",
+                defaults: new { controller = "Kron", action = "PostKronAsync" });
                 
-            });
+                
+            }
+            
+            
+
+            );
 
             app.UseSwagger();
             app.UseSwaggerUI(c =>

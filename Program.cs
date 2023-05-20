@@ -1,3 +1,5 @@
+using System.Net;
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
@@ -16,5 +18,17 @@ namespace MissingPersonApp
                 {
                     webBuilder.UseStartup<Startup>();
                 });
-    }
-}
+
+                public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+                WebHost.CreateDefaultBuilder(args)
+                    .UseKestrel(options =>
+                {
+                 // Set the HTTPS port
+                 options.Listen(IPAddress.Any, 5140, listenOptions =>
+                 {
+                      listenOptions.UseHttps();
+                  });
+              })
+               .UseStartup<Startup>();
+           }   
+        }
