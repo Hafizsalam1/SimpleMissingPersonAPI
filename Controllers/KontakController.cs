@@ -61,7 +61,7 @@ namespace MissingPersonApp.Controllers{
                 await connection.OpenAsync();
                 using (var transaction = connection.BeginTransaction()){
                     try{
-                        Relative relatives = await connection.QueryFirstOrDefaultAsync<Relative>("SELECT * FROM relative WHERE id = @Id", new { id = id }, transaction);
+                        Relative relatives = await connection.QueryFirstOrDefaultAsync<Relative>("SELECT * FROM relative WHERE id = @Id", new { Id = id }, transaction);
                         transaction.Commit();
                         return relatives;
 
@@ -105,7 +105,35 @@ namespace MissingPersonApp.Controllers{
             }
 
         }
-        
+
+        [HttpPut("{id}")]
+        public async Task<ActionResult<Relative>> PutRelativeAsync (int id, Relative relative){
+            using(var connection = new NpgsqlConnection(_connectionString)){
+                await connection.OpenAsync();
+                using(var transaction = connection.BeginTransaction()){
+                    try{
+                        Relative relativeLama = await connection.QueryFirstOrDefaultAsync<Relative>("SELECT * FROM relative WHERE id = @id", new { id = id }, transaction);
+                        await connection.ExecuteAsync("DELETE FROM relative WHERE bioid = @bioid", new { bioid = relativeLama.bioid }, transaction);
+
+                        // await connection.ExecuteAsync("UPDATE relative SET name = @name, bioid = @bioid, relationToVictim = @relationToVictim, phoneNumber = @phoneNumber WHERE Id = @id", new { name =relative.name, bioid = relative.bioid, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber, id = id}, transaction);
+                        await connection.ExecuteAsync("INSERT INTO relative (name, bioid, relationToVictim, phoneNumber, id) VALUES (@name, @bioid, @relationToVictim, @phoneNumber, @id)", 
+                        new { name = relative.name, bioid = relative.bioid, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber, id = id}, transaction);
+                        Bio bio = await connection.QueryFirstOrDefaultAsync<Bio>("SELECT * FROM bios WHERE id = @Id", new { id = relative.bioid }, transaction);
+
+                        List<Relative> relativeBaru = new List<Relative>();
+                        relativeBaru.Append(relative);
+                        bio.relatives = relativeBaru;
+                        transaction.Commit();
+                    }catch(NpgsqlException){
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+                return CreatedAtAction(nameof(PutRelativeAsync), "Relative",new { id = relative.id }, relative);
+
+            }
+
+        }
 
 
 

@@ -61,7 +61,7 @@ namespace MissingPersonApp
             {
                 endpoints.MapControllers();
                 endpoints.MapControllerRoute(
-                name: "GetBio",
+                name: "PostBio",
                 pattern: "api/bio/{id}",
                 defaults: new { controller = "Bio", action = "PostBioAsync" });
                 
@@ -81,7 +81,19 @@ namespace MissingPersonApp
                 endpoints.MapControllerRoute(
                 name: "PutBio",
                 pattern: "api/bio/{id}",
-                defaults: new { controller = "Kron", action = "PutBioAsync" });
+                defaults: new { controller = "Bio", action = "PutBioAsync" });
+
+                endpoints.MapControllers();
+                endpoints.MapControllerRoute(
+                name: "PutRelative",
+                pattern: "api/kontak/{id}",
+                defaults: new { controller = "Relative", action = "PutRelativeAsync" });
+
+                endpoints.MapControllers();
+                endpoints.MapControllerRoute(
+                name: "PutKron",
+                pattern: "api/kron/{id}",
+                defaults: new { controller = "Kron", action = "PutKronAsync" });
                 
                 
             }

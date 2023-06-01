@@ -60,15 +60,12 @@ namespace MissingPersonApp.Controllers
                 await connection.OpenAsync();
                 using (var transaction = connection.BeginTransaction()){
                     try{
-                        Kronologi chronologies = await connection.QueryFirstOrDefaultAsync<Kronologi>("SELECT * FROM kronologi WHERE id = @Id", new { id = id }, transaction);
+                        Kronologi chronologies = await connection.QueryFirstOrDefaultAsync<Kronologi>("SELECT * FROM kronologi WHERE id = @Id", new { Id = id }, transaction);
                         transaction.Commit();
                         return chronologies;
-
                     }
                     catch(NpgsqlException){
                         transaction.Rollback();
-
-
                     }
                     
                 }
@@ -102,6 +99,37 @@ namespace MissingPersonApp.Controllers
                 }
 
                 return CreatedAtAction(nameof(PostKronAsync), "Kron",new { id = chronology.id }, chronology);
+            }
+
+        }
+
+
+        [HttpPut("{id}")]
+        public async Task<ActionResult<Relative>> PutKronAsync (int id, Kronologi kronologi){
+            using(var connection = new NpgsqlConnection(_connectionString)){
+                await connection.OpenAsync();
+                using(var transaction = connection.BeginTransaction()){
+                    try{
+                        DateTime chroTime = DateTime.ParseExact(kronologi.dateAndTime,"yyyy/MM/dd hh:mm tt", CultureInfo.InvariantCulture);
+                        Kronologi kronologiLama = await connection.QueryFirstOrDefaultAsync<Kronologi>("SELECT * FROM kronologi WHERE id = @id", new { id = id }, transaction);
+                        await connection.ExecuteAsync("DELETE FROM kronologi WHERE bioid = @bioid", new { bioid = kronologiLama.bioid }, transaction);
+
+                        
+                        await connection.ExecuteAsync("INSERT INTO kronologi (activityName, bioid, dateAndTime, additionalNote, id) VALUES (@activityName, @bioid, @dateAndTime, @additionalNote, @id)", 
+                        new { activityName = kronologi.activityName, bioid = kronologi.bioid, dateAndTime = chroTime, additionalNote = kronologi.additionalNote, id = id}, transaction);
+                        Bio bio = await connection.QueryFirstOrDefaultAsync<Bio>("SELECT * FROM bios WHERE id = @Id", new { id = kronologi.bioid }, transaction);
+
+                        List<Kronologi> kronBaru = new List<Kronologi>();
+                        kronBaru.Append(kronologi);
+                        bio.chronology = kronBaru;
+                        transaction.Commit();
+                    }catch(NpgsqlException){
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+                return CreatedAtAction(nameof(PutKronAsync), "Kron",new { id = kronologi.id }, kronologi);
+
             }
 
         }            
