@@ -112,17 +112,17 @@ namespace MissingPersonApp.Controllers{
                 await connection.OpenAsync();
                 using(var transaction = connection.BeginTransaction()){
                     try{
-                        Relative relativeLama = await connection.QueryFirstOrDefaultAsync<Relative>("SELECT * FROM relative WHERE id = @id", new { id = id }, transaction);
-                        await connection.ExecuteAsync("DELETE FROM relative WHERE bioid = @bioid", new { bioid = relativeLama.bioid }, transaction);
-
+                        
+                        await connection.ExecuteAsync("DELETE FROM relative WHERE id = @id", new { id = id }, transaction);
+                        var relativeLama = await connection.QueryAsync<Relative>("SELECT * FROM relative WHERE bioid = @bioid", new { bioid = relative.bioid }, transaction);
                         // await connection.ExecuteAsync("UPDATE relative SET name = @name, bioid = @bioid, relationToVictim = @relationToVictim, phoneNumber = @phoneNumber WHERE Id = @id", new { name =relative.name, bioid = relative.bioid, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber, id = id}, transaction);
                         await connection.ExecuteAsync("INSERT INTO relative (name, bioid, relationToVictim, phoneNumber, id) VALUES (@name, @bioid, @relationToVictim, @phoneNumber, @id)", 
                         new { name = relative.name, bioid = relative.bioid, relationToVictim = relative.relationToVictim, phoneNumber = relative.phoneNumber, id = id}, transaction);
                         Bio bio = await connection.QueryFirstOrDefaultAsync<Bio>("SELECT * FROM bios WHERE id = @Id", new { id = relative.bioid }, transaction);
 
-                        List<Relative> relativeBaru = new List<Relative>();
-                        relativeBaru.Append(relative);
-                        bio.relatives = relativeBaru;
+                        
+                        relativeLama.Append(relative);
+                        bio.relatives = (ICollection<Relative>?)relativeLama;
                         transaction.Commit();
                     }catch(NpgsqlException){
                         transaction.Rollback();

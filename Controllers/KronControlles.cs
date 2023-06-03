@@ -111,17 +111,16 @@ namespace MissingPersonApp.Controllers
                 using(var transaction = connection.BeginTransaction()){
                     try{
                         DateTime chroTime = DateTime.ParseExact(kronologi.dateAndTime,"yyyy/MM/dd hh:mm tt", CultureInfo.InvariantCulture);
-                        Kronologi kronologiLama = await connection.QueryFirstOrDefaultAsync<Kronologi>("SELECT * FROM kronologi WHERE id = @id", new { id = id }, transaction);
-                        await connection.ExecuteAsync("DELETE FROM kronologi WHERE bioid = @bioid", new { bioid = kronologiLama.bioid }, transaction);
+                        await connection.ExecuteAsync("DELETE FROM kronologi WHERE id = @id", new { id = id }, transaction);
+                        var kronologiLama = await connection.QueryAsync<Kronologi>("SELECT * FROM kronologi WHERE bioid = @bioid", new { bioid = kronologi.bioid }, transaction);
 
                         
                         await connection.ExecuteAsync("INSERT INTO kronologi (activityName, bioid, dateAndTime, additionalNote, id) VALUES (@activityName, @bioid, @dateAndTime, @additionalNote, @id)", 
                         new { activityName = kronologi.activityName, bioid = kronologi.bioid, dateAndTime = chroTime, additionalNote = kronologi.additionalNote, id = id}, transaction);
                         Bio bio = await connection.QueryFirstOrDefaultAsync<Bio>("SELECT * FROM bios WHERE id = @Id", new { id = kronologi.bioid }, transaction);
 
-                        List<Kronologi> kronBaru = new List<Kronologi>();
-                        kronBaru.Append(kronologi);
-                        bio.chronology = kronBaru;
+                        kronologiLama.Append(kronologi);
+                        bio.chronology = (ICollection<Kronologi>?)kronologiLama;
                         transaction.Commit();
                     }catch(NpgsqlException){
                         transaction.Rollback();
